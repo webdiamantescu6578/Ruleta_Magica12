@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<title>Ruleta + Apuestas</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -15%,#1e2f52,#0b1020 60%);
+    color:#e8eefc;min-height:100vh;padding:14px 14px 60px}
+  .wrap{max-width:520px;margin:0 auto}
+  .tabs{display:flex;gap:6px;background:#131a2c;padding:6px;border-radius:14px;margin-bottom:16px;border:1px solid #1f2a44}
+  .tab{flex:1;padding:11px 4px;border:0;border-radius:10px;background:transparent;color:#8b98b8;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:.2s}
+  .tab.active{background:linear-gradient(145deg,#fbbf24,#f59e0b);color:#231a05}
+  .panel{display:none}.panel.active{display:block;animation:fade .3s}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .wheel-wrap{position:relative;width:min(88vw,420px);aspect-ratio:1;margin:38px auto 0}
+  #wheel{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 0 0 9px #16203a,0 0 0 13px #f59e0b,0 18px 50px rgba(0,0,0,.65);will-change:transform}
+  .pointer{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:30px solid #f43f5e;z-index:5;filter:drop-shadow(0 3px 6px rgba(0,0,0,.7))}
+  .pointer::after{content:'';position:absolute;top:-34px;left:-9px;width:18px;height:18px;border-radius:50%;background:#f43f5e;box-shadow:0 0 0 3px #16203a}
+  #spinBtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:23%;aspect-ratio:1;border-radius:50%;border:4px solid #fff8;cursor:pointer;z-index:4;background:linear-gradient(150deg,#fcd34d,#f59e0b 55%,#ea580c);color:#231a05;font-weight:900;font-size:clamp(11px,2.8vw,16px);letter-spacing:.5px;font-family:inherit;box-shadow:0 8px 22px rgba(0,0,0,.55);transition:transform .12s}
+  #spinBtn:active{transform:translate(-50%,-50%) scale(.93)}
+  #spinBtn:disabled{opacity:.55;cursor:not-allowed}
+  .result{text-align:center;margin-top:26px}
+  .result .lbl{font-size:13px;color:#8b98b8;text-transform:uppercase;letter-spacing:2px;font-weight:700}
+  .result .val{margin-top:8px;font-size:clamp(44px,15vw,76px);font-weight:900;line-height:1;background:linear-gradient(180deg,#fff,#fbbf24);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 6px 30px rgba(251,191,36,.35);min-height:1.1em}
+  .result .val.pop{animation:pop .5s}
+  @keyframes pop{0%{transform:scale(.6);opacity:.3}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+  .card{background:#131a2c;border:1px solid #1f2a44;border-radius:16px;padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 6px;font-size:17px}
+  .card p.hint{margin:0 0 12px;font-size:13px;color:#8b98b8;line-height:1.4}
+  label{display:block;font-size:13px;font-weight:700;color:#b9c6e2;margin:12px 0 6px}
+  input,select,textarea{width:100%;padding:12px;border-radius:11px;border:1px solid #26324f;background:#0d1425;color:#e8eefc;font-size:15px;font-family:inherit;outline:none}
+  textarea{resize:vertical;min-height:120px;line-height:1.5}
+  input:focus,select:focus,textarea:focus{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.15)}
+  .btn{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;background:linear-gradient(145deg,#fbbf24,#f59e0b);color:#231a05;box-shadow:0 6px 18px rgba(245,158,11,.3)}
+  .btn:active{transform:scale(.98)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:#1b2540;color:#b9c6e2;box-shadow:none;border:1px solid #26324f}
+  .btn.success{background:linear-gradient(145deg,#10b981,#059669);color:#fff;box-shadow:none}
+  .btn.danger{background:linear-gradient(145deg,#ef4444,#dc2626);color:#fff;box-shadow:none}
+  .msg{font-size:13px;margin-top:10px;min-height:18px;font-weight:600}
+  .msg.ok{color:#34d399}.msg.err{color:#f87171}
+  .row2{display:flex;gap:10px}.row2>*{flex:1}
+  .bet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px;margin-top:8px}
+  .bet-num{padding:14px 6px;border-radius:10px;background:#0d1425;border:2px solid #26324f;color:#e8eefc;font-weight:800;font-size:16px;cursor:pointer;text-align:center;font-family:inherit;transition:.15s}
+  .bet-num.sel{background:linear-gradient(145deg,#fbbf24,#f59e0b);color:#231a05;border-color:#f59e0b}
+  .bet-tiers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .bet-tier{padding:12px 8px;border-radius:10px;background:#0d1425;border:2px solid #26324f;cursor:pointer;text-align:center;font-family:inherit;color:#e8eefc;transition:.15s}
+  .bet-tier .b{font-size:11px;color:#8b98b8;font-weight:600}
+  .bet-tier .w{font-size:17px;font-weight:900;color:#34d399;margin-top:2px}
+  .bet-tier.sel{background:linear-gradient(145deg,#fbbf24,#f59e0b);color:#231a05;border-color:#f59e0b}
+  .bet-tier.sel .b,.bet-tier.sel .w{color:#231a05}
+  .pay-num{text-align:center;padding:20px;font-size:24px;font-weight:900;letter-spacing:1px;background:#0d1425;border-radius:12px;margin:10px 0;border:2px dashed #f59e0b;color:#fbbf24}
+  .whatsapp-btn{background:linear-gradient(145deg,#25d366,#1ebe57)!important;color:#fff!important;text-decoration:none;display:block;text-align:center;margin-top:6px}
+  .info-box{padding:14px;background:#0d1425;border-radius:12px;border:1px solid #26324f;font-size:14px;line-height:1.7;color:#b9c6e2;margin-top:12px}
+  .info-box b{color:#fbbf24}
+  .user-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0d1425;border-radius:12px;margin-bottom:14px;border:1px solid #26324f}
+  .user-bar b{color:#fbbf24}
+  .user-bar button{padding:6px 12px;border:0;border-radius:8px;background:#26324f;color:#b9c6e2;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
+  .auth-tabs{display:flex;gap:6px;background:#0d1425;padding:4px;border-radius:10px;margin-bottom:16px}
+  .auth-tab{flex:1;padding:10px;border:0;border-radius:8px;background:transparent;color:#8b98b8;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+  .auth-tab.active{background:linear-gradient(145deg,#fbbf24,#f59e0b);color:#231a05}
+  .req-item{padding:12px;background:#0d1425;border-radius:10px;margin-bottom:10px;border-left:4px solid #f59e0b}
+  .req-item.approved{border-left-color:#34d399}
+  .req-item.rejected{border-left-color:#f87171}
+  .req-item.won{border-left-color:#34d399;background:rgba(52,211,153,.08)}
+  .req-item.lost{border-left-color:#6b7a9e;opacity:.75}
+  .req-item.created{border-left-color:#6b7a9e;opacity:.7}
+  .req-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .req-user{font-weight:800;color:#fbbf24;font-size:15px}
+  .req-detail{font-size:14px;color:#b9c6e2;line-height:1.7}
+  .req-detail b{color:#fff}
+  .req-actions{display:flex;gap:8px;margin-top:10px}
+  .req-actions button{flex:1;padding:10px;border:0;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+  .btn-approve{background:linear-gradient(145deg,#10b981,#059669);color:#fff}
+  .btn-reject{background:linear-gradient(145deg,#ef4444,#dc2626);color:#fff}
+  .req-time{font-size:11px;color:#6b7a9e;margin-top:6px}
+  .badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+  .badge.pending{background:rgba(245,158,11,.2);color:#fbbf24}
+  .badge.approved{background:rgba(52,211,153,.2);color:#34d399}
+  .badge.rejected{background:rgba(248,113,113,.2);color:#f87171}
+  .badge.won{background:rgba(52,211,153,.3);color:#34d399}
+  .badge.lost{background:rgba(139,152,184,.2);color:#8b98b8}
+  .badge.created{background:rgba(139,152,184,.2);color:#8b98b8}
+  .empty{text-align:center;padding:20px;color:#6b7a9e;font-size:14px}
+  #historyList{list-style:none;padding:0;margin:8px 0 0;max-height:220px;overflow:auto}
+  #historyList li{display:flex;justify-content:space-between;padding:9px 12px;background:#0d1425;border-radius:9px;margin-bottom:6px;font-size:14px}
+  #historyList li span:last-child{color:#8b98b8;font-size:12px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .overlay.show{display:flex;animation:fade .25s}
+  .overlay-card{background:#131a2c;border:2px solid #f59e0b;border-radius:20px;padding:32px 24px;text-align:center;max-width:400px;width:100%}
+  .overlay-card.win{border-color:#34d399;box-shadow:0 0 40px rgba(52,211,153,.4)}
+  .overlay-card.lose{border-color:#f87171}
+  .overlay-emoji{font-size:64px;margin-bottom:12px}
+  .overlay-title{font-size:24px;font-weight:900;margin-bottom:8px}
+  .overlay-title.win{color:#34d399}.overlay-title.lose{color:#f87171}
+  .overlay-text{color:#b9c6e2;margin-bottom:20px;line-height:1.5}
+  .overlay-btn{padding:14px 32px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;background:linear-gradient(145deg,#fbbf24,#f59e0b);color:#231a05;display:block;width:100%}
+  .overlay-btn.wa{background:linear-gradient(145deg,#25d366,#1ebe57);color:#fff;margin-bottom:8px;text-decoration:none;text-align:center}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,20px);background:#131a2c;color:#e8eefc;padding:14px 20px;border-radius:12px;border:1px solid #26324f;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:200;opacity:0;transition:.3s;max-width:90vw;text-align:center;font-size:14px;font-weight:600}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.ok{border-color:#34d399}.toast.err{border-color:#f87171}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="ruleta">🎡 Ruleta</button>
+    <button class="tab" data-tab="apuestas">💰 Apuestas</button>
+    <button class="tab" data-tab="admin">⚙️ Admin</button>
+  </div>
+
+  <section id="tab-ruleta" class="panel active">
+    <div class="wheel-wrap">
+      <div class="pointer"></div>
+      <canvas id="wheel" width="640" height="640"></canvas>
+      <button id="spinBtn">GIRAR</button>
+    </div>
+    <div class="result">
+      <div class="lbl">Resultado</div>
+      <div class="val" id="resultVal">—</div>
+    </div>
+  </section>
+
+  <section id="tab-apuestas" class="panel">
+    <div id="authPanel">
+      <div class="card">
+        <h2>🔐 Acceso</h2>
+        <p class="hint">Regístrate o inicia sesión para apostar.</p>
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-auth="login">Iniciar sesión</button>
+          <button class="auth-tab" data-auth="register">Registrarse</button>
+        </div>
+        <div id="loginForm">
+          <label>Usuario</label><input id="loginUser" type="text" autocomplete="username">
+          <label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password">
+          <button class="btn" id="loginBtn">Entrar</button>
+          <div class="msg" id="loginMsg"></div>
+        </div>
+        <div id="registerForm" style="display:none">
+          <label>Usuario</label><input id="regUser" type="text" autocomplete="username">
+          <label>Contraseña</label><input id="regPass" type="password" autocomplete="new-password">
+          <label>Repetir contraseña</label><input id="regPass2" type="password" autocomplete="new-password">
+          <button class="btn" id="regBtn">Crear cuenta</button>
+          <div class="msg" id="regMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="betPanel" style="display:none">
+      <div class="user-bar">
+        <span>👤 <b id="userName"></b></span>
+        <button id="logoutBtn">Cerrar sesión</button>
+      </div>
+      <div class="card" id="placeBetCard">
+        <h2>🎯 Haz tu apuesta</h2>
+        <label>1. Elige tu número</label>
+        <div id="betNumbers" class="bet-grid"></div>
+        <label>2. Elige el monto</label>
+        <div id="betTiers" class="bet-tiers"></div>
+        <div class="info-box" id="betSummary" style="display:none">
+          <div>Apuestas: <b id="sumBet">—</b></div>
+          <div>Al número: <b id="sumNum">—</b></div>
+          <div>Si ganas: <b id="sumWin">—</b></div>
+        </div>
+        <button class="btn" id="betConfirmBtn" disabled>Realizar apuesta</button>
+      </div>
+
+      <div class="card" id="paymentCard" style="display:none">
+        <h2>💳 Pagar apuesta</h2>
+        <p class="hint">Paga al número de abajo y envía comprobante:</p>
+        <div class="pay-num">+53 593 69816</div>
+        <button class="btn ghost" id="copyPayBtn" style="margin-top:0">📋 Copiar número</button>
+        <a href="https://wa.me/5359369816" target="_blank" class="btn whatsapp-btn">💬 Enviar comprobante por WhatsApp</a>
+        <div class="info-box">
+          <div>Apuesta: <b id="payBet">—</b></div>
+          <div>Al número: <b id="payNum">—</b></div>
+          <div>Premio si ganas: <b style="color:#34d399" id="payWin">—</b></div>
+        </div>
+        <button class="btn success" id="iPaidBtn" style="margin-top:14px">✅ Ya envié el comprobante</button>
+        <button class="btn ghost" id="cancelCreatedBtn">Cancelar</button>
+      </div>
+
+      <div class="card" id="pendingCard" style="display:none">
+        <h2>⏳ Esperando confirmación</h2>
+        <p class="hint">Tu comprobante fue enviado. Esperando que el admin confirme.</p>
+        <div class="info-box">
+          <div>Apuesta: <b id="pendBet">—</b></div>
+          <div>Al número: <b id="pendNum">—</b></div>
+          <div>Premio si ganas: <b style="color:#34d399" id="pendWin">—</b></div>
+        </div>
+        <button class="btn ghost" id="cancelPendingBtn" style="margin-top:14px">Cancelar apuesta</button>
+      </div>
+
+      <div class="card" id="approvedCard" style="display:none">
+        <h2>✅ Apuesta confirmada</h2>
+        <p class="hint">Tu pago fue aprobado. ¡Ve a girar la ruleta!</p>
+        <div class="info-box" style="border-color:#34d399;background:rgba(52,211,153,.08)">
+          <div>Apuesta: <b id="apprBet">—</b></div>
+          <div>Al número: <b id="apprNum">—</b></div>
+          <div>Premio si ganas: <b style="color:#34d399" id="apprWin">—</b></div>
+        </div>
+        <button class="btn" id="goSpinBtn" style="margin-top:14px">🎡 Ir a girar</button>
+      </div>
+
+      <div class="card">
+        <h2>📋 Mis apuestas</h2>
+        <div id="myBets"><p class="hint">Cargando...</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-admin" class="panel">
+    <div id="lockScreen" class="card" style="display:none;text-align:center;padding:30px 10px">
+      <div style="font-size:46px;margin-bottom:10px">🔒</div>
+      <p class="hint">Introduce la contraseña de admin</p>
+      <input id="passInput" type="password" placeholder="Contraseña" autocomplete="off">
+      <button class="btn" id="passBtn">Entrar</button>
+      <div class="msg" id="passMsg"></div>
+    </div>
+
+    <div id="adminContent">
+      <div class="card">
+        <h2>📥 Solicitudes pendientes</h2>
+        <div id="pendingRequests"><div class="empty">Cargando...</div></div>
+      </div>
+      <div class="card">
+        <h2>📊 Todas las apuestas</h2>
+        <div id="allRequests"><div class="empty">Cargando...</div></div>
+      </div>
+      <div class="card">
+        <h2>⚙️ Configuración ruleta</h2>
+        <label>Opciones</label>
+        <textarea id="itemsInput" spellcheck="false"></textarea>
+        <label>Forzar resultado</label>
+        <select id="forcedInput"></select>
+        <div class="row2">
+          <button class="btn" id="saveBtn">💾 Guardar</button>
+          <button class="btn ghost" id="resetBtn">↺ Reiniciar</button>
+        </div>
+        <div class="msg" id="adminMsg"></div>
+      </div>
+      <div class="card">
+        <h2>📜 Historial</h2>
+        <ul id="historyList"></ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="resultOverlay" class="overlay">
+  <div class="overlay-card" id="overlayCard">
+    <div class="overlay-emoji" id="overlayEmoji">🎉</div>
+    <div class="overlay-title" id="overlayTitle"></div>
+    <div class="overlay-text" id="overlayText"></div>
+    <a id="overlayWa" class="overlay-btn wa" href="#" target="_blank" style="display:none">💬 Reclamar premio</a>
+    <button class="overlay-btn" id="overlayBtn">Cerrar</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BET_TIERS = [{bet:50,win:100},{bet:100,win:200},{bet:200,win:400},{bet:400,win:600},{bet:1000,win:1500}];
+const PAY_NUMBER = '+5359369816';
+
+let token = localStorage.getItem('tk') || '';
+let adminToken = localStorage.getItem('admtk') || '';
+let currentUser = '';
+let isAdmin = false;
+let items = [];
+let forced = '';
+let selectedNum = null;
+let selectedTier = null;
+let rotation = 0;
+let spinning = false;
+let myBets = [];
+let allBets = [];
+
+async function api(path, opts = {}) {
+  const headers = {'Content-Type':'application/json'};
+  if (opts.admin && adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+  else if (opts.auth && token) headers['Authorization'] = 'Bearer ' + token;
+  try {
+    const r = await fetch(path, {
+      method: opts.body ? 'POST' : 'GET',
+      headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    return await r.json();
+  } catch(e) {
+    return {error: 'Error de red: ' + e.message};
+  }
+}
+
+function toast(txt, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type||'');
+  t.textContent = txt;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+/* ---------- Wheel ---------- */
+function drawWheel() {
+  const canvas = $('wheel');
+  const ctx = canvas.getContext('2d');
+  const S = canvas.width, cx = S/2, cy = S/2, R = S/2 - 8;
+  ctx.clearRect(0,0,S,S);
+  const n = items.length;
+  if (!n) {
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle = '#1b2540'; ctx.fill();
+    ctx.fillStyle = '#6b7a9e';
+    ctx.font = 'bold 28px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Sin opciones', cx, cy);
+    return;
+  }
+  const seg = (Math.PI*2)/n;
+  const colors = ['#e11d48','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#f97316','#6366f1','#84cc16','#14b8a6','#ef4444'];
+  for (let i=0;i<n;i++) {
+    const a0 = -Math.PI/2 + i*seg, a1 = a0 + seg;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,a0,a1); ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length]; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.stroke();
+    const mid = a0 + seg/2;
+    const midN = ((mid % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(mid);
+    const fs = Math.min(38, Math.max(11, R * seg * 0.5));
+    ctx.font = '900 ' + fs + 'px system-ui';
+    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6;
+    let label = String(items[i]); if (label.length > 12) label = label.slice(0,11)+'…';
+    const flip = midN > Math.PI/2 && midN < 3*Math.PI/2;
+    if (flip) { ctx.rotate(Math.PI); ctx.textAlign = 'left'; ctx.fillText(label, -(R-26), 0); }
+    else { ctx.textAlign = 'right'; ctx.fillText(label, R-26, 0); }
+    ctx.restore();
+  }
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.17,0,Math.PI*2); ctx.fillStyle = '#0b1020'; ctx.fill();
+}
+
+async function spin() {
+  if (spinning || !items.length) return;
+  spinning = true;
+  $('spinBtn').disabled = true;
+  const resp = await api('/api/spin', {body:{}, auth:true});
+  if (resp.error) {
+    toast(resp.error, 'err');
+    spinning = false; $('spinBtn').disabled = false; return;
+  }
+  const result = String(resp.result);
+  const idx = items.findIndex(x => String(x) === result);
+  const segDeg = 360/items.length;
+  const jitter = (Math.random()-0.5)*segDeg*0.6;
+  const base = ((-(idx+0.5)*segDeg + jitter)%360+360)%360;
+  const cur = ((rotation%360)+360)%360;
+  const delta = ((base-cur)%360+360)%360;
+  rotation += (6+Math.floor(Math.random()*3))*360 + delta;
+  const canvas = $('wheel');
+  canvas.style.transition = 'transform 5.5s cubic-bezier(.12,.72,.15,1)';
+  void canvas.offsetWidth;
+  canvas.style.transform = 'rotate(' + rotation + 'deg)';
+  setTimeout(() => {
+    spinning = false; $('spinBtn').disabled = false;
+    const el = $('resultVal');
+    el.textContent = result;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    if (navigator.vibrate) navigator.vibrate([40,60,90]);
+    if (resp.resolved) {
+      if (resp.resolved.status === 'won') {
+        showOverlay('win', '¡GANASTE $' + resp.resolved.win + '!',
+          'Acertaste el número ' + resp.resolved.num + '. Reclama por WhatsApp.', resp.resolved);
+        if (navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
+      } else {
+        showOverlay('lose', 'No acertaste',
+          'Salió el ' + result + '. Tu apuesta era al ' + resp.resolved.num + '.', null);
+      }
+      loadMyBets().then(renderBetPanel);
+    }
+  }, 5600);
+}
+
+function showOverlay(type, title, text, bet) {
+  $('overlayCard').className = 'overlay-card ' + type;
+  $('overlayEmoji').textContent = type === 'win' ? '🎉' : '😢';
+  $('overlayTitle').textContent = title;
+  $('overlayTitle').className = 'overlay-title ' + type;
+  $('overlayText').textContent = text;
+  const wa = $('overlayWa');
+  if (type === 'win' && bet) {
+    wa.style.display = 'block';
+    const msg = 'Hola, GANÉ en la ruleta. Usuario: ' + bet.username + '. Número: ' + bet.num + '. Apuesta: $' + bet.bet + '. Premio: $' + bet.win;
+    wa.href = 'https://wa.me/5359369816?text=' + encodeURIComponent(msg);
+  } else wa.style.display = 'none';
+  $('resultOverlay').classList.add('show');
+}
+
+/* ---------- Auth ---------- */
+async function login(u, p) {
+  const d = await api('/api/login', {body:{username:u, password:p}});
+  if (d.token) {
+    token = d.token; currentUser = d.username;
+    localStorage.setItem('tk', token);
+    return true;
+  }
+  return d.error || 'Error';
+}
+
+async function register(u, p) {
+  const d = await api('/api/register', {body:{username:u, password:p}});
+  if (d.token) {
+    token = d.token; currentUser = d.username;
+    localStorage.setItem('tk', token);
+    return true;
+  }
+  return d.error || 'Error';
+}
+
+async function checkSession() {
+  if (!token) return;
+  const d = await api('/api/me', {auth:true});
+  if (d.user) { currentUser = d.user; isAdmin = d.admin; }
+  else { token = ''; localStorage.removeItem('tk'); currentUser = ''; isAdmin = false; }
+}
+
+function renderAuth() {
+  $('authPanel').style.display = currentUser ? 'none' : 'block';
+  $('betPanel').style.display = currentUser ? 'block' : 'none';
+  if (currentUser) $('userName').textContent = currentUser;
+}
+
+/* ---------- Bets UI ---------- */
+async function loadMyBets() {
+  if (!currentUser) { myBets = []; return; }
+  const d = await api('/api/bets/mine', {auth:true});
+  myBets = d.bets || [];
+}
+
+function activeBet() { return myBets.find(b => ['created','pending','approved'].includes(b.status)); }
+
+function renderBetNumbers() {
+  const g = $('betNumbers');
+  g.innerHTML = items.map(it => {
+    const sel = String(it) === String(selectedNum) ? ' sel' : '';
+    return '<button class="bet-num' + sel + '" data-num="' + esc(it) + '">' + esc(it) + '</button>';
+  }).join('');
+  g.querySelectorAll('.bet-num').forEach(b => {
+    b.onclick = () => { selectedNum = b.dataset.num; renderBetNumbers(); updateSummary(); };
+  });
+}
+
+function renderBetTiers() {
+  const g = $('betTiers');
+  g.innerHTML = BET_TIERS.map((t,i) => {
+    const sel = i === selectedTier ? ' sel' : '';
+    return '<button class="bet-tier' + sel + '" data-i="' + i + '">' +
+      '<div class="b">Apuesta</div>' +
+      '<div style="font-size:15px;font-weight:800;color:#fbbf24">$' + t.bet + '</div>' +
+      '<div class="w">Gana $' + t.win + '</div></button>';
+  }).join('');
+  g.querySelectorAll('.bet-tier').forEach(b => {
+    b.onclick = () => { selectedTier = parseInt(b.dataset.i); renderBetTiers(); updateSummary(); };
+  });
+}
+
+function updateSummary() {
+  if (selectedNum && selectedTier !== null) {
+    const t = BET_TIERS[selectedTier];
+    $('sumBet').textContent = '$' + t.bet;
+    $('sumNum').textContent = selectedNum;
+    $('sumWin').textContent = '$' + t.win;
+    $('betSummary').style.display = 'block';
+    $('betConfirmBtn').disabled = false;
+  } else {
+    $('betSummary').style.display = 'none';
+    $('betConfirmBtn').disabled = true;
+  }
+}
+
+function renderBetPanel() {
+  renderAuth();
+  if (!currentUser) return;
+  ['placeBetCard','paymentCard','pendingCard','approvedCard'].forEach(id => $(id).style.display = 'none');
+  const a = activeBet();
+  if (!a) {
+    $('placeBetCard').style.display = 'block';
+    renderBetNumbers(); renderBetTiers(); updateSummary();
+  } else if (a.status === 'created') {
+    $('paymentCard').style.display = 'block';
+    $('payBet').textContent = '$' + a.bet;
+    $('payNum').textContent = a.num;
+    $('payWin').textContent = '$' + a.win;
+  } else if (a.status === 'pending') {
+    $('pendingCard').style.display = 'block';
+    $('pendBet').textContent = '$' + a.bet;
+    $('pendNum').textContent = a.num;
+    $('pendWin').textContent = '$' + a.win;
+  } else if (a.status === 'approved') {
+    $('approvedCard').style.display = 'block';
+    $('apprBet').textContent = '$' + a.bet;
+    $('apprNum').textContent = a.num;
+    $('apprWin').textContent = '$' + a.win;
+  }
+  renderMyBets();
+}
+
+function renderMyBets() {
+  const el = $('myBets');
+  const labels = {created:'Sin pagar', pending:'Pendiente', approved:'Aprobada', rejected:'Rechazada', won:'GANADA', lost:'Perdida'};
+  if (!myBets.length) { el.innerHTML = '<p class="hint">Aún no tienes apuestas.</p>'; return; }
+  el.innerHTML = myBets.slice(0,20).map(r => {
+    const t = new Date(r.createdAt).toLocaleString('es', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    return '<div class="req-item ' + r.status + '">' +
+      '<div class="req-head"><span class="req-user">#' + esc(r.num) + ' · $' + r.bet + ' → $' + r.win + '</span>' +
+      '<span class="badge ' + r.status + '">' + labels[r.status] + '</span></div>' +
+      '<div class="req-time">' + t + (r.result ? ' · Salió: ' + esc(r.result) : '') + '</div></div>';
+  }).join('');
+}
+
+/* ---------- Admin ---------- */
+async function loadAdminData() {
+  const [bets, its, hist] = await Promise.all([
+    api('/api/admin/bets', {admin:true}),
+    api('/api/items'),
+    api('/api/history')
+  ]);
+  allBets = bets.bets || [];
+  items = its.items || items; forced = its.forced || '';
+  const histList = hist.history || [];
+  renderAdminRequests();
+  renderForcedSelect();
+  $('itemsInput').value = items.join('\n');
+  $('historyList').innerHTML = histList.length
+    ? histList.map(h => '<li><span>' + esc(h.v) + '</span><span>' + esc(h.t) + '</span></li>').join('')
+    : '<li><span>Sin resultados</span><span></span></li>';
+}
+
+function renderAdminRequests() {
+  const labels = {created:'Sin pagar', pending:'Pendiente', approved:'Aprobada', rejected:'Rechazada', won:'Ganada', lost:'Perdida'};
+  const pending = allBets.filter(r => r.status === 'pending');
+  const pEl = $('pendingRequests');
+  if (!pending.length) pEl.innerHTML = '<div class="empty">No hay solicitudes pendientes</div>';
+  else {
+    pEl.innerHTML = pending.map(r => {
+      const t = new Date(r.createdAt).toLocaleString('es', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+      return '<div class="req-item pending">' +
+        '<div class="req-head"><span class="req-user">👤 ' + esc(r.username) + '</span><span class="badge pending">Pendiente</span></div>' +
+        '<div class="req-detail">Número: <b>' + esc(r.num) + '</b> · Apuesta: <b>$' + r.bet + '</b> · Premio: <b>$' + r.win + '</b></div>' +
+        '<div class="req-time">' + t + '</div>' +
+        '<div class="req-actions"><button class="btn-approve" data-a="' + r.id + '">✅ Confirmar</button>' +
+        '<button class="btn-reject" data-r="' + r.id + '">❌ Rechazar</button></div></div>';
+    }).join('');
+    pEl.querySelectorAll('[data-a]').forEach(b => b.onclick = () => approveBet(b.dataset.a));
+    pEl.querySelectorAll('[data-r]').forEach(b => b.onclick = () => rejectBet(b.dataset.r));
+  }
+  const aEl = $('allRequests');
+  if (!allBets.length) aEl.innerHTML = '<div class="empty">Sin apuestas</div>';
+  else {
+    aEl.innerHTML = allBets.slice(0,100).map(r => {
+      const t = new Date(r.createdAt).toLocaleString('es', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+      return '<div class="req-item ' + r.status + '">' +
+        '<div class="req-head"><span class="req-user">👤 ' + esc(r.username) + '</span><span class="badge ' + r.status + '">' + labels[r.status] + '</span></div>' +
+        '<div class="req-detail">Número: <b>' + esc(r.num) + '</b> · Apuesta: <b>$' + r.bet + '</b> · Premio: <b>$' + r.win + '</b>' +
+        (r.result ? ' · Salió: <b>' + esc(r.result) + '</b>' : '') + '</div>' +
+        '<div class="req-time">' + t + '</div></div>';
+    }).join('');
+  }
+}
+
+async function approveBet(id) {
+  await api('/api/admin/approve', {body:{id}, admin:true});
+  toast('Aprobada ✅', 'ok'); loadAdminData();
+  if (currentUser) loadMyBets().then(renderBetPanel);
+}
+async function rejectBet(id) {
+  await api('/api/admin/reject', {body:{id}, admin:true});
+  toast('Rechazada ❌', 'err'); loadAdminData();
+  if (currentUser) loadMyBets().then(renderBetPanel);
+}
+
+function renderForcedSelect() {
+  const s = $('forcedInput');
+  s.innerHTML = '<option value="">🎲 Aleatorio</option>' +
+    items.map(it => '<option value="' + esc(it) + '">' + esc(it) + '</option>').join('');
+  s.value = forced;
+}
+
+async function checkAdmin() {
+  if (adminToken) {
+    const d = await api('/api/me', {admin:true});
+    if (d.admin) {
+      $('lockScreen').style.display = 'none';
+      $('adminContent').style.display = 'block';
+      loadAdminData();
+      return;
+    } else { adminToken = ''; localStorage.removeItem('admtk'); }
+  }
+  $('lockScreen').style.display = 'block';
+  $('adminContent').style.display = 'none';
+}
+
+/* ---------- Events ---------- */
+$('spinBtn').onclick = spin;
+$('overlayBtn').onclick = () => $('resultOverlay').classList.remove('show');
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = async () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('tab-' + t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'admin') checkAdmin();
+    if (t.dataset.tab === 'apuestas' && currentUser) {
+      await loadMyBets(); renderBetPanel();
+    }
+  };
+});
+
+document.querySelectorAll('.auth-tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.auth-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('loginForm').style.display = t.dataset.auth === 'login' ? 'block' : 'none';
+    $('registerForm').style.display = t.dataset.auth === 'register' ? 'block' : 'none';
+  };
+});
+
+$('loginBtn').onclick = async () => {
+  const u = $('loginUser').value.trim(), p = $('loginPass').value;
+  const r = await login(u, p);
+  if (r === true) {
+    $('loginMsg').textContent = ''; $('loginUser').value = ''; $('loginPass').value = '';
+    await loadMyBets(); renderBetPanel();
+    toast('Bienvenido, ' + u, 'ok');
+  } else {
+    $('loginMsg').textContent = r; $('loginMsg').className = 'msg err';
+  }
+};
+
+$('regBtn').onclick = async () => {
+  const u = $('regUser').value.trim(), p = $('regPass').value, p2 = $('regPass2').value;
+  if (p !== p2) { $('regMsg').textContent = 'Las contraseñas no coinciden'; $('regMsg').className = 'msg err'; return; }
+  const r = await register(u, p);
+  if (r === true) {
+    $('regMsg').textContent = ''; $('regUser').value = ''; $('regPass').value = ''; $('regPass2').value = '';
+    await loadMyBets(); renderBetPanel();
+    toast('Cuenta creada. ¡Bienvenido!', 'ok');
+  } else { $('regMsg').textContent = r; $('regMsg').className = 'msg err'; }
+};
+
+$('logoutBtn').onclick = () => {
+  token = ''; currentUser = ''; localStorage.removeItem('tk');
+  selectedNum = null; selectedTier = null; myBets = [];
+  renderBetPanel(); toast('Sesión cerrada', 'ok');
+};
+
+$('betConfirmBtn').onclick = async () => {
+  if (!selectedNum || selectedTier === null) return;
+  const t = BET_TIERS[selectedTier];
+  const d = await api('/api/bet', {body:{num:selectedNum, bet:t.bet, win:t.win}, auth:true});
+  if (d.error) { toast(d.error, 'err'); return; }
+  selectedNum = null; selectedTier = null;
+  await loadMyBets(); renderBetPanel();
+  toast('Apuesta creada. Paga y envía comprobante.', 'ok');
+};
+
+$('copyPayBtn').onclick = () => {
+  if (navigator.clipboard) navigator.clipboard.writeText(PAY_NUMBER)
+    .then(() => toast('Copiado: ' + PAY_NUMBER, 'ok'))
+    .catch(() => toast('No se pudo copiar', 'err'));
+};
+
+$('iPaidBtn').onclick = async () => {
+  const a = activeBet(); if (!a) return;
+  await api('/api/bet/paid', {body:{id:a.id}, auth:true});
+  await loadMyBets(); renderBetPanel();
+  toast('Comprobante enviado. Esperando admin.', 'ok');
+};
+
+$('cancelCreatedBtn').onclick = $('cancelPendingBtn').onclick = async () => {
+  const a = activeBet(); if (!a) return;
+  if (!confirm('¿Cancelar esta apuesta?')) return;
+  await api('/api/bet/cancel', {body:{id:a.id}, auth:true});
+  await loadMyBets(); renderBetPanel();
+  toast('Apuesta cancelada', 'ok');
+};
+
+$('goSpinBtn').onclick = () => document.querySelector('[data-tab="ruleta"]').click();
+
+$('passBtn').onclick = async () => {
+  const d = await api('/api/admin/login', {body:{password:$('passInput').value}});
+  if (d.token) {
+    adminToken = d.token; localStorage.setItem('admtk', adminToken);
+    $('passInput').value = ''; $('passMsg').textContent = '';
+    checkAdmin();
+  } else { $('passMsg').textContent = d.error || 'Error'; $('passMsg').className = 'msg err'; }
+};
+$('passInput').onkeydown = e => { if (e.key === 'Enter') $('passBtn').click(); };
+
+$('saveBtn').onclick = async () => {
+  let arr = $('itemsInput').value.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+  arr = Array.from(new Set(arr));
+  const r = await api('/api/admin/items', {body:{items:arr, forced:$('forcedInput').value}, admin:true});
+  if (r.error) { $('adminMsg').textContent = r.error; $('adminMsg').className = 'msg err'; return; }
+  await refreshItems();
+  $('adminMsg').textContent = 'Guardado ✔'; $('adminMsg').className = 'msg ok';
+};
+
+$('forcedInput').onchange = async () => {
+  await api('/api/admin/items', {body:{items:items, forced:$('forcedInput').value}, admin:true});
+  forced = $('forcedInput').value;
+  toast(forced ? 'Forzando: ' + forced : 'Modo aleatorio', 'ok');
+};
+
+$('resetBtn').onclick = async () => {
+  if (!confirm('¿Reiniciar opciones a 1-8?')) return;
+  await api('/api/admin/items', {body:{items:['1','2','3','4','5','6','7','8'], forced:''}, admin:true});
+  await refreshItems();
+  toast('Reiniciado', 'ok');
+};
+
+async function refreshItems() {
+  const d = await api('/api/items');
+  items = d.items || []; forced = d.forced || '';
+  drawWheel(); renderBetNumbers(); renderBetTiers(); renderForcedSelect();
+  $('itemsInput').value = items.join('\n');
+}
+
+/* ---------- Polling ---------- */
+setInterval(async () => {
+  const apuestasTab = document.querySelector('[data-tab="apuestas"]');
+  if (currentUser && apuestasTab.classList.contains('active')) {
+    const before = JSON.stringify(myBets.map(b => b.id + b.status));
+    await loadMyBets();
+    const after = JSON.stringify(myBets.map(b => b.id + b.status));
+    if (before !== after) renderBetPanel();
+  }
+}, 3000);
+
+setInterval(async () => {
+  const adminTab = document.querySelector('[data-tab="admin"]');
+  if (adminToken && adminTab.classList.contains('active') && $('adminContent').style.display !== 'none') {
+    loadAdminData();
+  }
+}, 4000);
+
+/* ---------- Init ---------- */
+(async function init() {
+  await checkSession();
+  await refreshItems();
+  await loadMyBets();
+  renderBetPanel();
+  if (currentUser) renderBetPanel();
+})();
+</script>
+</body>
+  </html>
